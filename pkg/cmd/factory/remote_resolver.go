@@ -2,13 +2,13 @@ package factory
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/cli/cli/v2/context"
 	"github.com/cli/cli/v2/git"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghinstance"
+	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/set"
 	"github.com/cli/go-gh/v2/pkg/ssh"
 )
@@ -16,6 +16,12 @@ import (
 const (
 	GH_HOST = "GH_HOST"
 )
+
+// Netflix-specific: map git proxy hostnames to their GitHub Enterprise API host.
+// This allows the CLI to work automatically without setting GH_HOST.
+var netflixGitProxyMapping = map[string]string{
+	"git.netflix.net": "github.netflix.net",
+}
 
 type remoteResolver struct {
 	readRemotes   func() (git.RemoteSet, error)
@@ -80,15 +86,17 @@ func (rr *remoteResolver) Resolver() func() (context.Remotes, error) {
 		}
 
 		if len(rr.cachedRemotes) == 0 {
+			// Fall back to all remotes for commands that only need owner/repo matching.
+			// When GH_HOST is set, override the repo host so API calls go to the correct host.
+			// This allows git operations through proxies/bastions where the git remote host
+			// differs from the GitHub API host.
 			if isHostEnv(src) {
-				rr.remotesError = fmt.Errorf("none of the git remotes configured for this repository correspond to the %s environment variable. Try adding a matching remote or unsetting the variable", src)
-				return nil, rr.remotesError
-			} else if cfg.Authentication().HasEnvToken() {
-				rr.remotesError = errors.New("set the GH_HOST environment variable to specify which GitHub host to use")
-				return nil, rr.remotesError
+				// Override the repo host with GH_HOST for API operations
+				rr.cachedRemotes = overrideRemoteRepoHost(resolvedRemotes, defaultHost)
+			} else {
+				// Check for Netflix git proxy remotes and auto-map to GitHub Enterprise
+				rr.cachedRemotes = applyNetflixProxyMapping(resolvedRemotes)
 			}
-			rr.remotesError = errors.New("none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`")
-			return nil, rr.remotesError
 		}
 
 		return rr.cachedRemotes, nil
@@ -97,4 +105,38 @@ func (rr *remoteResolver) Resolver() func() (context.Remotes, error) {
 
 func isHostEnv(src string) bool {
 	return src == GH_HOST
+}
+
+// overrideRemoteRepoHost creates new Remote objects with the repo host overridden.
+// This is used when GH_HOST is set but no remotes match that host - we keep the
+// owner/repo from the git remote but use GH_HOST for API operations.
+func overrideRemoteRepoHost(remotes context.Remotes, host string) context.Remotes {
+	result := make(context.Remotes, len(remotes))
+	for i, r := range remotes {
+		result[i] = &context.Remote{
+			Remote: r.Remote,
+			Repo:   ghrepo.NewWithHost(r.RepoOwner(), r.RepoName(), host),
+		}
+	}
+	return result
+}
+
+// applyNetflixProxyMapping checks if any remotes use a known Netflix git proxy
+// hostname and maps them to the corresponding GitHub Enterprise API host.
+// This allows the CLI to work automatically without setting GH_HOST.
+func applyNetflixProxyMapping(remotes context.Remotes) context.Remotes {
+	result := make(context.Remotes, len(remotes))
+	for i, r := range remotes {
+		if apiHost, ok := netflixGitProxyMapping[r.RepoHost()]; ok {
+			// Netflix git proxy detected - map to GitHub Enterprise for API calls
+			result[i] = &context.Remote{
+				Remote: r.Remote,
+				Repo:   ghrepo.NewWithHost(r.RepoOwner(), r.RepoName(), apiHost),
+			}
+		} else {
+			// Not a Netflix proxy - keep as-is
+			result[i] = r
+		}
+	}
+	return result
 }
