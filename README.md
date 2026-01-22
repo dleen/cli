@@ -15,8 +15,8 @@ This patched version automatically detects Netflix git proxy remotes and routes 
 **Option A: Using existing gh** (if you have brew gh installed)
 
 ```bash
-# Download latest release
-GH_HOST=github.netflix.net gh release download latest --repo dleen/cli --pattern "*.tar.gz" --dir /tmp --clobber
+# Download latest release (omit tag to get latest)
+GH_HOST=github.netflix.net gh release download --repo dleen/cli --pattern "*.tar.gz" --dir /tmp --clobber
 tar -xzf /tmp/gh-darwin-arm64.tar.gz -C /tmp
 mkdir -p ~/.local/bin
 mv /tmp/gh-darwin-arm64 ~/.local/bin/gh
