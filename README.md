@@ -10,15 +10,23 @@ This patched version automatically detects Netflix git proxy remotes and routes 
 
 ## Install
 
-### 1. Uninstall brew version (if installed)
+### 1. Download the patched binary
+
+**Option A: Using existing gh** (if you have brew gh installed)
 
 ```bash
+# Download using existing gh
+GH_HOST=github.netflix.net gh release download v2.83.2-proxy-fix --repo dleen/cli --pattern "*.tar.gz" --dir /tmp
+tar -xzf /tmp/gh-darwin-arm64.tar.gz -C /tmp
+mkdir -p ~/.local/bin
+mv /tmp/gh-darwin-arm64 ~/.local/bin/gh
+chmod +x ~/.local/bin/gh
+
+# Now uninstall brew version
 brew uninstall gh
 ```
 
-### 2. Download the patched binary
-
-**Option A: Download from web browser** (easiest for first install)
+**Option B: Download from web browser** (if you don't have gh installed)
 
 1. Go to: https://github.netflix.net/dleen/cli/releases/tag/v2.83.2-proxy-fix
 2. Download `gh-darwin-arm64.tar.gz`
@@ -26,20 +34,12 @@ brew uninstall gh
 
 ```bash
 tar -xzf ~/Downloads/gh-darwin-arm64.tar.gz -C /tmp
+mkdir -p ~/.local/bin
 mv /tmp/gh-darwin-arm64 ~/.local/bin/gh
 chmod +x ~/.local/bin/gh
 ```
 
-**Option B: Using existing gh** (before uninstalling brew version)
-
-```bash
-GH_HOST=github.netflix.net gh release download v2.83.2-proxy-fix --repo dleen/cli --pattern "*.tar.gz" --dir /tmp
-tar -xzf /tmp/gh-darwin-arm64.tar.gz -C /tmp
-mv /tmp/gh-darwin-arm64 ~/.local/bin/gh
-chmod +x ~/.local/bin/gh
-```
-
-### 3. Ensure ~/.local/bin is in your PATH
+### 2. Ensure ~/.local/bin is in your PATH
 
 Add to your `~/.zshrc` or `~/.bashrc`:
 
@@ -53,13 +53,13 @@ Then reload:
 source ~/.zshrc  # or source ~/.bashrc
 ```
 
-### 4. Authenticate to Netflix GHE
+### 3. Authenticate to Netflix GHE
 
 ```bash
 gh auth login -p https -h github.netflix.net
 ```
 
-### 5. Verify
+### 4. Verify
 
 ```bash
 gh --version
