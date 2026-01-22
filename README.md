@@ -94,6 +94,40 @@ When the CLI detects a git remote pointing to `git.netflix.net`, it automaticall
 - Works with github.com repos
 - Works with other enterprise setups via `GH_HOST` environment variable
 
+## Building and Releasing
+
+### Build
+
+```bash
+go build -o gh ./cmd/gh
+./gh --version  # Verify [Netflix] tag appears
+```
+
+### Create a new release
+
+```bash
+# Create release artifact
+mkdir -p dist
+cp gh dist/gh-darwin-arm64
+cd dist && tar -czvf gh-darwin-arm64.tar.gz gh-darwin-arm64 && cd ..
+
+# Delete old release and create new one
+GH_HOST=github.netflix.net ./gh release delete v2.83.2-proxy-fix --repo dleen/cli --yes
+GH_HOST=github.netflix.net ./gh release create v2.83.2-proxy-fix \
+  --repo dleen/cli \
+  --title "gh 2.83.2 [Netflix]" \
+  --notes "Netflix gh CLI - see README for details" \
+  dist/gh-darwin-arm64.tar.gz
+```
+
+### Sync with upstream
+
+```bash
+git fetch origin trunk
+git rebase origin/trunk
+# Resolve any conflicts, rebuild, and create new release
+```
+
 ## Source
 
 - Branch: https://github.netflix.net/dleen/cli/tree/fix-git-proxy-remotes
