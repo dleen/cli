@@ -2,7 +2,6 @@ package version
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/cli/cli/v2/pkg/cmdutil"
@@ -31,16 +30,10 @@ func Format(version, buildDate string) string {
 		dateStr = fmt.Sprintf(" (%s)", buildDate)
 	}
 
-	return fmt.Sprintf("gh version %s%s\n%s\n", version, dateStr, changelogURL(version))
+	return fmt.Sprintf("gh version %s%s [Netflix]\n%s\n", version, dateStr, changelogURL(version))
 }
 
 func changelogURL(version string) string {
-	path := "https://github.com/cli/cli"
-	r := regexp.MustCompile(`^v?\d+\.\d+\.\d+(-[\w.]+)?$`)
-	if !r.MatchString(version) {
-		return fmt.Sprintf("%s/releases/latest", path)
-	}
-
-	url := fmt.Sprintf("%s/releases/tag/v%s", path, strings.TrimPrefix(version, "v"))
-	return url
+	// Netflix fork releases
+	return "https://github.netflix.net/dleen/cli/releases"
 }
