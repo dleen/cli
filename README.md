@@ -1,105 +1,88 @@
-# GitHub CLI
+# Netflix gh CLI
 
-`gh` is GitHub on the command line. It brings pull requests, issues, and other GitHub concepts to the terminal next to where you are already working with `git` and your code.
+A patched version of the GitHub CLI that works automatically with Netflix's git proxy setup.
 
-![screenshot of gh pr status](https://user-images.githubusercontent.com/98482/84171218-327e7a80-aa40-11ea-8cd1-5177fc2d0e72.png)
+## Why?
 
-GitHub CLI is supported for users on GitHub.com, GitHub Enterprise Cloud, and GitHub Enterprise Server 2.20+ with support for macOS, Windows, and Linux.
+Netflix uses `git.netflix.net` as a git proxy, but the GitHub Enterprise API is at `github.netflix.net`. The standard `gh` CLI doesn't handle this - it tries to make API calls to `git.netflix.net` which fails.
 
-## Documentation
+This patched version automatically detects Netflix git proxy remotes and routes API calls to the correct host.
 
-For [installation options see below](#installation), for usage instructions [see the manual]( https://cli.github.com/manual/).
+## Install
 
-## Contributing
+### 1. Uninstall brew version (if installed)
 
-If anything feels off or if you feel that some functionality is missing, please check out the [contributing page](.github/CONTRIBUTING.md). There you will find instructions for sharing your feedback, building the tool locally, and submitting pull requests to the project.
-
-If you are a hubber and are interested in shipping new commands for the CLI, check out our [doc on internal contributions](docs/working-with-us.md)
-
-<!-- this anchor is linked to from elsewhere, so avoid renaming it -->
-## Installation
-
-### [macOS](docs/install_macos.md)
-
-- [Homebrew](docs/install_macos.md#homebrew)
-- [Precompiled binaries](docs/install_macos.md#precompiled-binaries) on [releases page][]
-
-For additional macOS packages and installers, see [community-supported docs](docs/install_macos.md#community-unofficial)
-
-### [Linux & Unix](docs/install_linux.md)
-
-- [Debian, Raspberry Pi, Ubuntu](docs/install_linux.md#debian)
-- [Amazon Linux, CentOS, Fedora, openSUSE, RHEL, SUSE](docs/install_linux.md#rpm)
-- [Precompiled binaries](docs/install_linux.md#precompiled-binaries) on [releases page][]
-
-For additional Linux & Unix packages and installers, see [community-supported docs](docs/install_linux.md#community-unofficial)
-
-### [Windows](docs/install_windows.md)
-
-- [WinGet](docs/install_windows.md#winget)
-- [Precompiled binaries](docs/install_windows.md#precompiled-binaries) on [releases page][]
-
-For additional Windows packages and installers, see [community-supported docs](docs/install_windows.md#community-unofficial)
-
-### Build from source
-
-See here on how to [build GitHub CLI from source](docs/install_source.md).
-
-### GitHub Codespaces
-
-To add GitHub CLI to your codespace, add the following to your [devcontainer file](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-features-to-a-devcontainer-file):
-
-```json
-"features": {
-  "ghcr.io/devcontainers/features/github-cli:1": {}
-}
+```bash
+brew uninstall gh
 ```
 
-### GitHub Actions
+### 2. Download the patched binary
 
-[GitHub-hosted runners](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners) have the GitHub CLI pre-installed, which is updated weekly.
+```bash
+# Download from Netflix GHE
+curl -L https://github.netflix.net/dleen/cli/releases/download/v2.83.2-proxy-fix/gh-darwin-arm64.tar.gz | tar -xz -C /tmp
 
-If a specific version is needed, your GitHub Actions workflow will need to install it based on the [macOS](#macos), [Linux & Unix](#linux--unix), or [Windows](#windows) instructions above.
+# Move to your bin directory
+mv /tmp/gh-darwin-arm64 ~/.local/bin/gh
+chmod +x ~/.local/bin/gh
+```
 
-For information on all pre-installed tools, see [`actions/runner-images`](https://github.com/actions/runner-images)
+### 3. Ensure ~/.local/bin is in your PATH
 
-### Verification of binaries
+Add to your `~/.zshrc` or `~/.bashrc`:
 
-Since version 2.50.0, `gh` has been producing [Build Provenance Attestation](https://github.blog/changelog/2024-06-25-artifact-attestations-is-generally-available/), enabling a cryptographically verifiable paper-trail back to the origin GitHub repository, git revision, and build instructions used. The build provenance attestations are signed and rely on Public Good [Sigstore](https://www.sigstore.dev/) for PKI.
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
-There are two common ways to verify a downloaded release, depending on whether `gh` is already installed or not. If `gh` is installed, it's trivial to verify a new release:
+Then reload:
 
-- **Option 1: Using `gh` if already installed:**
+```bash
+source ~/.zshrc  # or source ~/.bashrc
+```
 
-  ```shell
-  $ gh at verify -R cli/cli gh_2.62.0_macOS_arm64.zip
-  Loaded digest sha256:fdb77f31b8a6dd23c3fd858758d692a45f7fc76383e37d475bdcae038df92afc for file://gh_2.62.0_macOS_arm64.zip
-  Loaded 1 attestation from GitHub API
-  ✓ Verification succeeded!
+### 4. Authenticate to Netflix GHE
 
-  sha256:fdb77f31b8a6dd23c3fd858758d692a45f7fc76383e37d475bdcae038df92afc was attested by:
-  REPO     PREDICATE_TYPE                  WORKFLOW
-  cli/cli  https://slsa.dev/provenance/v1  .github/workflows/deployment.yml@refs/heads/trunk
-  ```
+```bash
+gh auth login -p https -h github.netflix.net
+```
 
-- **Option 2: Using Sigstore [`cosign`](https://github.com/sigstore/cosign):**
+### 5. Verify
 
-  To perform this, download the [attestation](https://github.com/cli/cli/attestations) for the downloaded release and use cosign to verify the authenticity of the downloaded release:
+```bash
+gh --version
+# Should show: gh version 2.83.2-...
 
-  ```shell
-  $ cosign verify-blob-attestation --bundle cli-cli-attestation-3120304.sigstore.json \
-        --new-bundle-format \
-        --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-        --certificate-identity="https://github.com/cli/cli/.github/workflows/deployment.yml@refs/heads/trunk" \
-        gh_2.62.0_macOS_arm64.zip
-  Verified OK
-  ```
+cd your-netflix-repo
+gh pr list
+# Should work without setting GH_HOST!
+```
 
-## Comparison with hub
+## Usage
 
-For many years, [hub](https://github.com/github/hub) was the unofficial GitHub CLI tool. `gh` is a new project that helps us explore
-what an official GitHub CLI tool can look like with a fundamentally different design. While both
-tools bring GitHub to the terminal, `hub` behaves as a proxy to `git`, and `gh` is a standalone
-tool. Check out our [more detailed explanation](docs/gh-vs-hub.md) to learn more.
+Just use `gh` normally in any Netflix repo:
 
-[releases page]: https://github.com/cli/cli/releases/latest
+```bash
+gh pr list
+gh pr create --title "My PR" --body "Description"
+gh pr view 123
+gh pr checkout 123
+gh repo view
+```
+
+No need to set `GH_HOST` or run `ghe-fix-proxy`!
+
+## How it works
+
+When the CLI detects a git remote pointing to `git.netflix.net`, it automatically maps API calls to `github.netflix.net`. Git operations still use the original remote.
+
+## Compatibility
+
+- Works with Netflix GHE repos (git.netflix.net remotes)
+- Works with github.com repos
+- Works with other enterprise setups via `GH_HOST` environment variable
+
+## Source
+
+- Branch: https://github.netflix.net/dleen/cli/tree/fix-git-proxy-remotes
+- Based on upstream PR: https://github.com/cli/cli/pull/12180
