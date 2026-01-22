@@ -18,11 +18,24 @@ brew uninstall gh
 
 ### 2. Download the patched binary
 
-```bash
-# Download from Netflix GHE
-curl -L https://github.netflix.net/dleen/cli/releases/download/v2.83.2-proxy-fix/gh-darwin-arm64.tar.gz | tar -xz -C /tmp
+**Option A: Using existing gh (before uninstalling brew version)**
 
-# Move to your bin directory
+```bash
+# Download using gh (requires GH_HOST since you're not in a Netflix repo)
+GH_HOST=github.netflix.net gh release download v2.83.2-proxy-fix --repo dleen/cli --pattern "*.tar.gz" --dir /tmp
+tar -xzf /tmp/gh-darwin-arm64.tar.gz -C /tmp
+mv /tmp/gh-darwin-arm64 ~/.local/bin/gh
+chmod +x ~/.local/bin/gh
+```
+
+**Option B: Download from web browser**
+
+1. Go to: https://github.netflix.net/dleen/cli/releases/tag/v2.83.2-proxy-fix
+2. Download `gh-darwin-arm64.tar.gz`
+3. Extract and install:
+
+```bash
+tar -xzf ~/Downloads/gh-darwin-arm64.tar.gz -C /tmp
 mv /tmp/gh-darwin-arm64 ~/.local/bin/gh
 chmod +x ~/.local/bin/gh
 ```
